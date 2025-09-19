@@ -1,7 +1,5 @@
 package com.springboot.lms;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -10,67 +8,75 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 
+import java.util.Arrays;
+
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
-    @Bean
-public CorsFilter corsFilter() {
-    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-    CorsConfiguration config = new CorsConfiguration();
-    config.setAllowCredentials(true);
-    config.addAllowedOrigin("http://localhost:3000"); // your frontend
-    config.addAllowedHeader("*");
-    config.addAllowedMethod("*"); // GET, POST, PUT, DELETE, OPTIONS
-    source.registerCorsConfiguration("/**", config);
-    return new CorsFilter(source);
-}
+    private final JwtFilter jwtFilter;
+
+    public SecurityConfig(JwtFilter jwtFilter) {
+        this.jwtFilter = jwtFilter;
+    }
 
     @Bean
-    SecurityFilterChain filterChain(HttpSecurity http, JwtFilter jwtFilter) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .csrf((csrf) -> csrf.disable())
-                .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/api/user/signup").permitAll()
-                        .requestMatchers("/api/author/register").permitAll() // Add this line
-                        .requestMatchers("/api/learner/add").permitAll()
-                        .requestMatchers("/api/author/add").permitAll()
-                        .requestMatchers("/api/course/getAll").permitAll()
-                        .requestMatchers("/api/user/token").authenticated()
-                        .requestMatchers("/api/user/details").authenticated()
-                        .requestMatchers("/api/course/getCoursesByAuthor").hasAuthority("AUTHOR")
-                        .requestMatchers("/api/module/add").hasAuthority("AUTHOR")
-                        .requestMatchers("/api/learner/getLearner").hasAuthority("LEARNER")
-                        .requestMatchers("/api/video/add/{moduleId}").hasAuthority("AUTHOR")
-                        .requestMatchers("/api/course/add").hasAnyAuthority("AUTHOR", "EXECUTIVE")
-                        .anyRequest().authenticated()
-                )
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
-                .httpBasic(Customizer.withDefaults());
+            .cors() // enable CORS
+            .and()
+            .csrf(csrf -> csrf.disable())
+            .authorizeHttpRequests(authorize -> authorize
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                .requestMatchers("/api/user/signup").permitAll()
+                .requestMatchers("/api/author/register").permitAll()
+                .requestMatchers("/api/learner/add").permitAll()
+                .requestMatchers("/api/author/add").permitAll()
+                .requestMatchers("/api/course/getAll").permitAll()
+                .requestMatchers("/api/user/token").authenticated()
+                .requestMatchers("/api/user/details").authenticated()
+                .requestMatchers("/api/course/getCoursesByAuthor").hasAuthority("AUTHOR")
+                .requestMatchers("/api/module/add").hasAuthority("AUTHOR")
+                .requestMatchers("/api/learner/getLearner").hasAuthority("LEARNER")
+                .requestMatchers("/api/video/add/{moduleId}").hasAuthority("AUTHOR")
+                .requestMatchers("/api/course/add").hasAnyAuthority("AUTHOR", "EXECUTIVE")
+                .anyRequest().authenticated()
+            )
+            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+            .httpBasic(Customizer.withDefaults());
+
         return http.build();
     }
 
     @Bean
-    PasswordEncoder passwordEncoder() {
+    public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
     @Bean
-    AuthenticationManager getAuthManager(AuthenticationConfiguration auth)
+    public AuthenticationManager getAuthManager(AuthenticationConfiguration auth)
             throws Exception {
         return auth.getAuthenticationManager();
+    }
+
+    // Global CORS configuration
+    @Bean
+    public CorsFilter corsFilter() {
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowCredentials(true);
+        config.setAllowedOrigins(Arrays.asList("http://localhost:5173")); // your frontend URL
+        config.setAllowedHeaders(Arrays.asList("*"));
+        config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        source.registerCorsConfiguration("/**", config);
+        return new CorsFilter(source);
     }
 }
