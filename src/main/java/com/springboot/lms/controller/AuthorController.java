@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/author")
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin("*")
 public class AuthorController {
 
     @Autowired
